@@ -1,26 +1,12 @@
-![title.png](./plot/title.png)
-
-<h1>Abstract</h1>
-This project presents a lightweight framework for generating structured chest X-ray reports by fine-tuning LLaVA-Med with LoRA on the IU X-Ray dataset. Our method achieves state-of-the-art performance across multiple metrics, demonstrating significant improvements in clinical accuracy and semantic coherence compared to existing approaches. To help readers quickly deploy our model, we write this instruction.
-
 <h1>Get Started</h1>
 <h2>1. Required Packages</h2>
-Please install the required packages for our model via:
+请确保正在路径Lora-RAG下，Please install the required packages for our model via:
 
 ```Shell
-git clone https://github.com/H1963977384/A-Fine-Tuned-LLaVA-Med-Framework-for-Automatic-Chest-X-ray-Report-Generation.git
-cd A-Fine-Tuned-LLaVA-Med-Framework-for-Automatic-Chest-X-ray-Report-Generation
 pip install -r requirements.txt
 ```
 
 <h2>2. LLaVA-Med Deployment</h2>
-<h3>(1) Clone this repository</h3>
-
-```Python
-git clone https://github.com/microsoft/LLaVA-Med.git
-```
-
-<h3>(2) Install relavant packages</h3>
 
 ```Shell
 cd LLaVA-Med
@@ -31,8 +17,6 @@ pip install --user -e .
 <h2>3. Dataset</h2>
 <h3>(1) Description</h3>
 To achieve the research objectives, this study utilizes the IU X-Ray Dataset. Collected retrospectively between 2011 and 2018 by researchers at Indiana University Health from two large hospital systems within Indiana's patient care network, this dataset was specifically constructed for chest X-ray image understanding and report generation tasks.
-
-![Dataset.png](./plot/dataset.png)
 
 <h3>(2) Download and Transform</h3>
 Load the image data by the following code. If encountering network problems, please download directly from [Kaggle](https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university).
@@ -53,37 +37,19 @@ The training hyperparameters (epochs, batch size, gradient accumulation steps, L
 
 ```Shell
 cd ..
-python train_lora.py --model_path microsoft/llava-med-v1.5-mistral-7b --json_file ./data/train_report.json --image_dir ./data/images/images_normalized --output_dir ./LoRA_Weight --epochs 10 --batch_size 1 --gradient_accumulation_steps 64 --lora_r 64 --lora_alpha 128 --lr 2e-4
+python train_rag.py --model_path microsoft/llava-med-v1.5-mistral-7b --json_file ./data/train_report.json --image_dir ./data/2/images/images_normalized --output_dir ./rag_weight --epochs 10 --batch_size 1 --gradient_accumulation_steps 64 --lora_r 64 --lora_alpha 128 --lr 2e-4
 ```
 
 <h2>4. Evaluation</h2>
-Before Evaluation, please ensure these two evalution scipts are under LLaVA-Med folder.
+本文对训练好后的RAG模型进行测试评估，并对三种模型进行了对比，分别是基础模型、纯lora训练模型、加入rag训练模型。并在测试的过程中分别对三种模型加减rag推理过程进一步分析rag的作用影响。
 
-```Shell
-mv ./eval/* ./LLaVA-Med
-```
-
-<h3>(1) Only LLaVA-Med</h3>
-Please ensure you have already downloaded the dataset and placed under **data** folder.
-
-```Shell
-cd LLaVA-Med
-python llava.py --json_file ../data/test_report.json
-```
-
-![Only_LLaVA-Med.png](./plot/Only_LLaVA-Med.png)
-
-
-<h3>(2) LLaVA-Med + LoRA</h3>
-Users can either train their own LoRA weights or utilize our pre-trained versions. To utilize our pre-trained weights, Git LFS must first be installed. For installation instructions, please refer to:
+<h3>(1) 下载纯lora训练模型</h3>
 
 ```Shell
 curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
 sudo apt-get install git-lfs
 git lfs install
 ```
-
-Then download them via:
 
 ```Shell
 cd ..
@@ -92,27 +58,91 @@ cd LoRA_Weight
 unzip lora_final4.zip
 ```
 
-The LoRA weights can then be integrated into the base model through:
+<h3>(2) 基础评估</h3>
+没有RAG推理过程的llava-med的评估结果详见：
 
+使用RAG推理的llavamed评估运行如下：
 ```Shell
-cd ../LLaVA-Med
-python llava_lora.py --lora_path ../LoRA_Weight/lora_final3 --json_file ../data/test_report.json
+cd ..
+python base_llava.py \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--csv_output pretrained_with_rag.csv \--use_rag \--rag_top_k 3
+```
+没有RAG推理过程的纯Lora的评估结果详见：
+
+使用RAG推理的纯Lora评估运行如下：
+```Shell
+python base_eval.py \--lora_path ./lora_final3 \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--csv_output lora_with_rag_results.csv \--use_rag \--rag_top_k 3
 ```
 
-![LLaVA-Med+LoRA.png](./plot/LLaVA-Med+LoRA.png)
+使用Rag权重但不添加Rag推理过程：
+```Shell
+python base_eval.py \--lora_path ./rag_weight/checkpoint-epoch-3 \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--csv_output with_rag_results.csv \--use_rag \--rag_top_k 3
+```
+使用Rag权重并添加Rag推理过程：
+```Shell
+python base_eval.py \--lora_path ./rag_weight/checkpoint-epoch-3 \--json_file ./data/test_report.json 
+```
 
-<h2>Main Result</h2>
-To validate LLaVA-Med's applicability and LoRA's effectiveness in medical report generation, we quantitatively compared it with some mainstream methods on the IU X-Ray dataset, as shown in the following table.
+<h3>(3) 功能性评估 </h3>
+每运行一个代码文件都会同时给到该模型有无RAG推理过程的结果对比。
 
-![result1.png](./plot/result1.png)
+LLava-med：
+```Shell
+python functional_llava.py \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--rag_top_k 3 \--output_prefix functional_test_pretrained
+```
+纯Lora权重：
+```Shell
+python functional_test.py \--lora_path ./rag_weigt/lora_final3 \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--rag_top_k 3 \--output_csv functional_test_rag.csv 
+```
 
-<h1>Contribution</h1>
-The team collaboratively completed this research. The seamless integration of each phase ensured the smooth progression of the research. 
+RAG权重：
+```Shell
+python functional_test.py \--lora_path ./rag_weigt/checkpoint-epoch-2 \--json_file ./data/test_report.json \--image_dir ./data/2/images/images_normalized \--rag_top_k 3 \--output_csv functional_test_rag.csv
+```
 
-<h1></h1>
+<h3>(4) 使用LLM评估</h3>
+本文使用的评估大模型是Qwen-Max
 
-![hyt.png](./plot/hyt.png)
-![ln.png](./plot/ln.png)
-![lry.png](./plot/lry.png)
-![tsy.png](./plot/tsy.png)
-![hjm.png](./plot/hjm.png)
+抽取样本（也可以全部测试，这里因为大模型免费额度问题只抽去50个样本）
+```Shell
+python extract_samples.py
+```
+
+下载Qwen使用条件
+```Shell
+Pip install dashscope
+```
+
+LLava-med：
+
+使用基础llava-med权重但不使用RAG推理过程
+```Shell
+python llm_llava_no_raginfer.py
+```
+使用基础llava-med权重并添加RAG推理过程
+```Shell
+python llm_llava_with_raginfer.py
+```
+
+纯Lora权重：
+
+使用纯Lora权重但不使用RAG推理过程
+```Shell
+python llm_lora_no_raginfer.py
+```
+使用纯Lora权重并添加RAG推理过程
+```Shell
+python llm_lora_with_raginfer.py
+```
+
+RAG权重：
+
+使用Rag权重但不使用RAG推理过程
+```Shell
+python llm_rag_no_raginfer.py
+```
+使用Rag权重并添加RAG推理过程
+```Shell
+python llm_rag_with_raginfer.py
+```
+
+
