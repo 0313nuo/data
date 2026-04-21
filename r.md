@@ -32,7 +32,7 @@ The text data has been preprocessed and is ready for immediate use. The image pa
 python report2json.py --report_path ./report.csv --seed 42
 ```
 
-<h2>3. Training</h2>
+<h2>4. Training</h2>
 The training hyperparameters (epochs, batch size, gradient accumulation steps, LoRA rank, and alpha) can be adjusted according to available computational resources. For stable operation using the following parameters, verify that your GPU has **a minimum of 20GB of memory**.
 
 ```Shell
@@ -40,7 +40,7 @@ cd ..
 python train_rag.py --model_path microsoft/llava-med-v1.5-mistral-7b --json_file ./data/train_report.json --image_dir ./data/2/images/images_normalized --output_dir ./rag_weight --epochs 10 --batch_size 1 --gradient_accumulation_steps 64 --lora_r 64 --lora_alpha 128 --lr 2e-4
 ```
 
-<h2>4. Evaluation</h2>
+<h2>5. Evaluation</h2>
 This paper evaluates the trained RAG model and compares three variants: the baseline model, the pure LORA-trained model, and the model trained with RAG. During testing, the RAG inference process was added to or removed from each of the three models to further analyze the impact of RAG.
 
 <h3>(1) Download the pure LORA-trained model</h3>
